@@ -31,7 +31,12 @@ export function MatchmakingPage() {
     loadUser();
   }, [navigate]);
 
-  const handleMatchFound = (sessionId: string, _playerNumber: 1 | 2, _opponentUsername: string, _playerClass: any) => {
+  const handleMatchFound = (sessionId: string, playerNumber: 1 | 2, opponentUsername: string, playerClass: any) => {
+    // Store match info for the match page
+    sessionStorage.setItem('matchPlayerNumber', playerNumber.toString());
+    sessionStorage.setItem('matchOpponentUsername', opponentUsername);
+    sessionStorage.setItem('matchPlayerClass', playerClass);
+
     // Navigate to the match page with the session ID as the match code
     navigate(`/match/${sessionId}`);
   };

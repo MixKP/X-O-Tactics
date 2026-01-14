@@ -54,7 +54,7 @@ export function LocalGamePage() {
     };
 
     window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
+    return () => { window.removeEventListener('keydown', handleEsc); };
   }, [selectedSkill, showHowToPlay]);
 
   // AI turn handling
@@ -100,7 +100,7 @@ export function LocalGamePage() {
         }
       }, 800);
 
-      return () => clearTimeout(timer);
+      return () => { clearTimeout(timer); };
     }
   }, [gameState, gameScreen, isAIMode, aiDifficulty]);
 
@@ -169,7 +169,7 @@ export function LocalGamePage() {
       setErrorMessage(message);
       setSelectedSkill(null);
       console.error('Error:', error);
-      setTimeout(() => setErrorMessage(null), 3000);
+      setTimeout(() => { setErrorMessage(null); }, 3000);
     }
   };
 
@@ -237,7 +237,7 @@ export function LocalGamePage() {
 
         <div className="flex gap-2">
           <button
-            onClick={() => setShowHowToPlay(true)}
+            onClick={() => { setShowHowToPlay(true); }}
             className="px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 transition-colors"
           >
             📖 Help
@@ -355,7 +355,7 @@ export function LocalGamePage() {
       </div>
 
       {showHowToPlay && (
-        <HowToPlay onClose={() => setShowHowToPlay(false)} />
+        <HowToPlay onClose={() => { setShowHowToPlay(false); }} />
       )}
     </div>
   );

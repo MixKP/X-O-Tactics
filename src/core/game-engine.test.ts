@@ -78,7 +78,7 @@ describe('isValidMove', () => {
   });
 
   it('should reject moves when game is not playing', () => {
-    let state = createInitialState();
+    const state = createInitialState();
     state.status = 'won';
     expect(isValidMove(state, 0)).toBe(false);
 

@@ -89,7 +89,7 @@ export function useAIPlayer(props: UseAIPlayerProps): AIPlayerReturn {
         triggerAIMove();
       }, moveDelay);
 
-      return () => clearTimeout(timer);
+      return () => { clearTimeout(timer); };
     }
   }, [gameState.currentPlayer, gameState.status, enabled, difficulty, isThinking, triggerAIMove, moveDelay]);
 

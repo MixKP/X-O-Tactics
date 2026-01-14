@@ -44,7 +44,7 @@ export function Navbar({ user, onHome, onLeaderboard, onProfile, onLogin, onLogo
                 <div className="relative">
                   {/* Profile Dropdown Button */}
                   <button
-                    onClick={() => setShowDropdown(!showDropdown)}
+                    onClick={() => { setShowDropdown(!showDropdown); }}
                     className="flex items-center space-x-3 px-3 py-2 bg-gray-900/50 rounded-lg border border-gray-700 hover:border-cyan-500/50 transition-all cursor-pointer"
                   >
                     <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">

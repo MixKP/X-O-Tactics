@@ -135,7 +135,7 @@ export function SkillPanel({
             currentMP={currentMP}
             isCurrentTurn={isCurrentTurn}
             isSelected={selectedSkill === skill.name}
-            onSelect={() => onSkillSelect(skill.name)}
+            onSelect={() => { onSkillSelect(skill.name); }}
           />
         ))}
       </div>
@@ -147,7 +147,7 @@ export function SkillPanel({
             🔮 {selectedSkill} - Click a cell to use
           </p>
           <button
-            onClick={() => onSkillSelect('')}
+            onClick={() => { onSkillSelect(''); }}
             className="w-full mt-1 text-xs text-purple-300 underline hover:text-purple-100"
           >
             Cancel (ESC)
