@@ -51,7 +51,7 @@ export function GameBoard({
         return (
           <button
             key={index}
-            onClick={() => handleCellClick(index)}
+            onClick={() => { handleCellClick(index); }}
             disabled={disabled}
             className={`
               relative flex items-center justify-center

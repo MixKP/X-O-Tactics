@@ -12,9 +12,9 @@ export function HomePage() {
       <TitleScreen
         onStart={() => navigate('/local')}
         onCompetitive={() => navigate('/profile')}
-        onHowToPlay={() => setShowHowToPlay(true)}
+        onHowToPlay={() => { setShowHowToPlay(true); }}
       />
-      {showHowToPlay && <HowToPlay onClose={() => setShowHowToPlay(false)} />}
+      {showHowToPlay && <HowToPlay onClose={() => { setShowHowToPlay(false); }} />}
     </>
   );
 }

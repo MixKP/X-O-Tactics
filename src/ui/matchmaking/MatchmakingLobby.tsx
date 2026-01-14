@@ -8,12 +8,12 @@ import { createOnlineGameSession } from '../../services/game-session-service';
 
 interface MatchmakingLobbyProps {
   userId: string;
-  profile: Profile;
+  profile?: Profile;
   onMatchFound: (sessionId: string, playerNumber: 1 | 2, opponentUsername: string, playerClass: PlayerClass) => void;
   onCancel: () => void;
 }
 
-export function MatchmakingLobby({ userId, profile: _profile, onMatchFound: _onMatchFound, onCancel }: MatchmakingLobbyProps) {
+export function MatchmakingLobby({ userId, onMatchFound: _onMatchFound, onCancel }: MatchmakingLobbyProps) {
   const [gameMode, setGameMode] = useState<GameMode>('ranked');
   const [playerClass, setPlayerClass] = useState<PlayerClass>('disruptor');
   const [eloRating, setEloRating] = useState<EloRating | null>(null);
@@ -233,7 +233,7 @@ export function MatchmakingLobby({ userId, profile: _profile, onMatchFound: _onM
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
-                    onClick={() => setGameMode('ranked')}
+                    onClick={() => { setGameMode('ranked'); }}
                     className={`p-4 rounded-lg border-2 transition-all ${
                       gameMode === 'ranked'
                         ? 'border-cyan-500 bg-cyan-500/20 text-white'
@@ -244,7 +244,7 @@ export function MatchmakingLobby({ userId, profile: _profile, onMatchFound: _onM
                     <p className="text-xs">ELO rating on the line</p>
                   </button>
                   <button
-                    onClick={() => setGameMode('casual')}
+                    onClick={() => { setGameMode('casual'); }}
                     className={`p-4 rounded-lg border-2 transition-all ${
                       gameMode === 'casual'
                         ? 'border-cyan-500 bg-cyan-500/20 text-white'
@@ -264,7 +264,7 @@ export function MatchmakingLobby({ userId, profile: _profile, onMatchFound: _onM
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
-                    onClick={() => setPlayerClass('disruptor')}
+                    onClick={() => { setPlayerClass('disruptor'); }}
                     className={`p-4 rounded-lg border-2 transition-all ${
                       playerClass === 'disruptor'
                         ? 'border-purple-500 bg-purple-500/20 text-white'
@@ -275,7 +275,7 @@ export function MatchmakingLobby({ userId, profile: _profile, onMatchFound: _onM
                     <p className="text-xs">Shift, Freeze, Vanish</p>
                   </button>
                   <button
-                    onClick={() => setPlayerClass('tactician')}
+                    onClick={() => { setPlayerClass('tactician'); }}
                     className={`p-4 rounded-lg border-2 transition-all ${
                       playerClass === 'tactician'
                         ? 'border-purple-500 bg-purple-500/20 text-white'

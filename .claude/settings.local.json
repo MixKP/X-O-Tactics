@@ -10,7 +10,14 @@
       "Bash(wc:*)",
       "Bash(echo:*)",
       "Bash(ls:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "mcp__zread__get_repo_structure",
+      "Bash(grep:*)",
+      "Bash(npm run test:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npm run lint:*)"
     ]
   }
 }

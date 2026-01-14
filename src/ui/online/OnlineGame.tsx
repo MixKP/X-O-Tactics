@@ -196,7 +196,7 @@ export function OnlineGame({
       }
     }, delay);
 
-    return () => clearTimeout(timeout);
+    return () => { clearTimeout(timeout); };
   }, [reconnectionState]);
 
   // Handle cell click

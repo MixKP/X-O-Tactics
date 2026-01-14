@@ -194,7 +194,7 @@ export function AuthScreen({ onAuthSuccess, initialMode = 'login' }: AuthScreenP
                 <input
                   type="text"
                   value={loginData.username}
-                  onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
+                  onChange={(e) => { setLoginData({ ...loginData, username: e.target.value }); }}
                   className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
                   placeholder="Player123"
                   required
@@ -209,7 +209,7 @@ export function AuthScreen({ onAuthSuccess, initialMode = 'login' }: AuthScreenP
                 <input
                   type="password"
                   value={loginData.password}
-                  onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                  onChange={(e) => { setLoginData({ ...loginData, password: e.target.value }); }}
                   className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
                   placeholder="••••••••"
                   required
@@ -236,7 +236,7 @@ export function AuthScreen({ onAuthSuccess, initialMode = 'login' }: AuthScreenP
                 <input
                   type="text"
                   value={registerData.username}
-                  onChange={(e) => setRegisterData({ ...registerData, username: e.target.value })}
+                  onChange={(e) => { setRegisterData({ ...registerData, username: e.target.value }); }}
                   className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
                   placeholder="Player123"
                   required
@@ -251,7 +251,7 @@ export function AuthScreen({ onAuthSuccess, initialMode = 'login' }: AuthScreenP
                 <input
                   type="email"
                   value={registerData.email}
-                  onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
+                  onChange={(e) => { setRegisterData({ ...registerData, email: e.target.value }); }}
                   className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
                   placeholder="your@email.com"
                   required
@@ -265,7 +265,7 @@ export function AuthScreen({ onAuthSuccess, initialMode = 'login' }: AuthScreenP
                 <input
                   type="password"
                   value={registerData.password}
-                  onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
+                  onChange={(e) => { setRegisterData({ ...registerData, password: e.target.value }); }}
                   className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
                   placeholder="••••••••"
                   required
@@ -280,7 +280,7 @@ export function AuthScreen({ onAuthSuccess, initialMode = 'login' }: AuthScreenP
                 <input
                   type="password"
                   value={registerData.confirmPassword}
-                  onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
+                  onChange={(e) => { setRegisterData({ ...registerData, confirmPassword: e.target.value }); }}
                   className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
                   placeholder="••••••••"
                   required

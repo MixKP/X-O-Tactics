@@ -137,7 +137,7 @@ export function ClassSelection({
         {/* Game Mode Selection */}
         <div className="mb-6 flex justify-center gap-4">
           <button
-            onClick={() => onAIModeToggle()}
+            onClick={() => { onAIModeToggle(); }}
             className={`
               px-6 py-3 rounded-lg font-bold transition-all transform hover:scale-105
               ${!isAIMode
@@ -149,7 +149,7 @@ export function ClassSelection({
             👥 PvP (2 Players)
           </button>
           <button
-            onClick={() => onAIModeToggle()}
+            onClick={() => { onAIModeToggle(); }}
             className={`
               px-6 py-3 rounded-lg font-bold transition-all transform hover:scale-105
               ${isAIMode
@@ -170,17 +170,17 @@ export function ClassSelection({
               <DifficultyButton
                 difficulty="easy"
                 isSelected={aiDifficulty === 'easy'}
-                onSelect={() => onAIDifficultySelect('easy')}
+                onSelect={() => { onAIDifficultySelect('easy'); }}
               />
               <DifficultyButton
                 difficulty="medium"
                 isSelected={aiDifficulty === 'medium'}
-                onSelect={() => onAIDifficultySelect('medium')}
+                onSelect={() => { onAIDifficultySelect('medium'); }}
               />
               <DifficultyButton
                 difficulty="hard"
                 isSelected={aiDifficulty === 'hard'}
-                onSelect={() => onAIDifficultySelect('hard')}
+                onSelect={() => { onAIDifficultySelect('hard'); }}
               />
             </div>
             <p className="text-xs text-gray-400 text-center mt-2">
@@ -211,7 +211,7 @@ export function ClassSelection({
                 color="bg-cyan-500"
                 isSelected={playerXClass === 'disruptor'}
                 isDisabled={false}
-                onSelect={() => onPlayerXSelect('disruptor')}
+                onSelect={() => { onPlayerXSelect('disruptor'); }}
               />
               <ClassCard
                 playerClass="tactician"
@@ -226,7 +226,7 @@ export function ClassSelection({
                 color="bg-cyan-500"
                 isSelected={playerXClass === 'tactician'}
                 isDisabled={false}
-                onSelect={() => onPlayerXSelect('tactician')}
+                onSelect={() => { onPlayerXSelect('tactician'); }}
               />
             </div>
           </div>
@@ -249,7 +249,7 @@ export function ClassSelection({
                   color="bg-orange-500"
                   isSelected={playerOClass === 'disruptor'}
                   isDisabled={false}
-                  onSelect={() => onPlayerOSelect('disruptor')}
+                  onSelect={() => { onPlayerOSelect('disruptor'); }}
                 />
                 <ClassCard
                   playerClass="tactician"
@@ -264,7 +264,7 @@ export function ClassSelection({
                   color="bg-orange-500"
                   isSelected={playerOClass === 'tactician'}
                   isDisabled={false}
-                  onSelect={() => onPlayerOSelect('tactician')}
+                  onSelect={() => { onPlayerOSelect('tactician'); }}
                 />
               </div>
             </div>
