@@ -179,6 +179,7 @@ DROP POLICY IF EXISTS "Authenticated users can create game sessions" ON public.g
 DROP POLICY IF EXISTS "Players can update their own game sessions" ON public.game_sessions;
 
 DROP POLICY IF EXISTS "Players can view moves from their sessions" ON public.game_moves;
+DROP POLICY IF EXISTS "Players can insert moves in their sessions" ON public.game_moves;
 
 -- Profiles policies
 CREATE POLICY "Public profiles are viewable by everyone"
@@ -227,6 +228,15 @@ CREATE POLICY "Players can update their own game sessions"
 -- Game moves policies
 CREATE POLICY "Players can view moves from their sessions"
   ON public.game_moves FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.game_sessions
+      WHERE id = game_moves.game_session_id
+      AND (player1_id = auth.uid() OR player2_id = auth.uid())
+    )
+  );
+
+CREATE POLICY "Players can insert moves in their sessions"
+  ON public.game_moves FOR INSERT WITH CHECK (
     EXISTS (
       SELECT 1 FROM public.game_sessions
       WHERE id = game_moves.game_session_id
@@ -436,8 +446,20 @@ BEGIN
     v_session.game_mode,
     v_session.player1_id,
     v_session.player2_id,
-    CASE WHEN p_is_draw THEN NULL ELSE v_session.player1_id END,
-    CASE WHEN p_is_draw THEN NULL ELSE v_session.player2_id END,
+    CASE WHEN p_is_draw THEN NULL ELSE
+      CASE
+        WHEN p_winner = 'X' THEN (CASE WHEN v_session.player1_symbol = 'X' THEN v_session.player1_id ELSE v_session.player2_id END)
+        WHEN p_winner = 'O' THEN (CASE WHEN v_session.player1_symbol = 'O' THEN v_session.player1_id ELSE v_session.player2_id END)
+        ELSE NULL
+      END
+    END,
+    CASE WHEN p_is_draw THEN NULL ELSE
+      CASE
+        WHEN p_winner = 'X' THEN (CASE WHEN v_session.player1_symbol = 'X' THEN v_session.player2_id ELSE v_session.player1_id END)
+        WHEN p_winner = 'O' THEN (CASE WHEN v_session.player1_symbol = 'O' THEN v_session.player2_id ELSE v_session.player1_id END)
+        ELSE NULL
+      END
+    END,
     p_is_draw,
     v_player1_rating,
     v_player2_rating,
@@ -471,6 +493,36 @@ BEGIN
   WHERE expires_at < NOW() OR status = 'cancelled';
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to find a match in the matchmaking queue
+CREATE OR REPLACE FUNCTION public.find_match(
+  p_user_id UUID,
+  p_game_mode TEXT,
+  p_player_class TEXT,
+  p_rating_tolerance INTEGER DEFAULT 100
+)
+RETURNS UUID AS $$
+DECLARE
+  v_match_id UUID;
+BEGIN
+  -- Find ANY waiting opponent with same game_mode
+  -- Note: player_class is NOT used for matching - players choose independently
+  SELECT id INTO v_match_id
+  FROM public.matchmaking_queue
+  WHERE
+    status = 'waiting'
+    AND game_mode = p_game_mode
+    AND user_id != p_user_id
+    AND created_at > NOW() - INTERVAL '5 minutes'
+  ORDER BY created_at ASC
+  LIMIT 1;
+
+  RETURN v_match_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- Grant execute permission on find_match
+GRANT EXECUTE ON FUNCTION public.find_match(UUID, TEXT, TEXT, INTEGER) TO authenticated;
 
 -- ============================================================================
 -- POST-SETUP: Fix existing profiles (if any) to include email

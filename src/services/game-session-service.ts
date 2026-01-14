@@ -104,8 +104,9 @@ export async function getGameSession(sessionId: string): Promise<OnlineGameSessi
 export async function updateGameState(
   sessionId: string,
   gameState: GameState,
-  move: Move
+  _move: Move
 ): Promise<void> {
+  // Note: move is already in gameState.moveHistory (added by makeMove)
   const { error } = await supabase
     .from('game_sessions')
     .update({
@@ -115,7 +116,8 @@ export async function updateGameState(
       effects: serializeEffects(gameState.effects),
       status: gameState.status === 'playing' ? 'playing' : gameState.status,
       winner: gameState.winner,
-      move_history: [...gameState.moveHistory, move],
+      move_history: gameState.moveHistory,
+      last_activity_at: new Date().toISOString(),
     })
     .eq('id', sessionId);
 
@@ -244,12 +246,21 @@ function serializeEffects(effects: any): any {
 }
 
 /**
- * Helper: Deserialize effects from JSON storage
+ * Helper: Deserialize effects from JSON storage or realtime broadcast
+ * Handles both database format (array) and broadcast format (object from Set serialization)
  */
 export function deserializeEffects(data: any): any {
+  // Handle shieldedMarks - could be array (from DB) or object (from Set serialization)
+  let shieldedMarksData = data.shieldedMarks || [];
+
+  // If shieldedMarks is an object (from serialized Set), convert to array
+  if (!Array.isArray(shieldedMarksData) && typeof shieldedMarksData === 'object') {
+    shieldedMarksData = Object.values(shieldedMarksData);
+  }
+
   return {
     frozenCells: data.frozenCells || {},
-    shieldedMarks: new Set(data.shieldedMarks || []),
+    shieldedMarks: new Set(shieldedMarksData),
   };
 }
 

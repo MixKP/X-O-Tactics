@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import type { Profile, EloRating } from '../../lib/supabase';
 import { matchmakingHelpers, eloHelpers } from '../../lib/supabase';
@@ -22,8 +22,15 @@ export function MatchmakingLobby({ userId, onMatchFound: _onMatchFound, onCancel
   const [estimatedPlayers, setEstimatedPlayers] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  // Use ref to track if component is mounted
+  const isMountedRef = useRef(true);
+
   useEffect(() => {
     loadEloRating();
+    return () => {
+      // Cleanup on unmount
+      isMountedRef.current = false;
+    };
   }, [userId, gameMode]);
 
   useEffect(() => {
@@ -68,22 +75,7 @@ export function MatchmakingLobby({ userId, onMatchFound: _onMatchFound, onCancel
 
       if (joinError) throw joinError;
 
-      // Subscribe to queue updates for real-time matchmaking
-      matchmakingHelpers.subscribeToQueue(async (payload) => {
-        // If someone else got matched and we're still searching
-        if (
-          payload.eventType === 'UPDATE' &&
-          payload.new.status === 'matched' &&
-          payload.new.user_id !== userId &&
-          status === 'searching'
-        ) {
-          // Assume we're the match - our opponent found us!
-          // Use the opponent's queue entry ID
-          handleMatchFound(payload.new.id);
-        }
-      });
-
-      // Poll for matches (fallback)
+      // Poll for matches
       pollForMatch();
 
     } catch (err: any) {
@@ -95,20 +87,22 @@ export function MatchmakingLobby({ userId, onMatchFound: _onMatchFound, onCancel
   const pollForMatch = async () => {
     let attempts = 0;
     const maxAttempts = 60; // 60 seconds max
+    let pollingInterval: NodeJS.Timeout | null = null;
 
-    const pollInterval = setInterval(async () => {
-      if (status !== 'searching') {
-        clearInterval(pollInterval);
+    pollingInterval = setInterval(async () => {
+      // Check if component is still mounted and status is still searching
+      if (!isMountedRef.current || status !== 'searching') {
+        if (pollingInterval) clearInterval(pollingInterval);
         return;
       }
 
       attempts++;
 
       if (attempts >= maxAttempts) {
-        clearInterval(pollInterval);
+        if (pollingInterval) clearInterval(pollingInterval);
+        if (!isMountedRef.current) return;
         setError('Matchmaking timeout. No players found.');
         await leaveQueue();
-        setStatus('idle');
         return;
       }
 
@@ -119,8 +113,23 @@ export function MatchmakingLobby({ userId, onMatchFound: _onMatchFound, onCancel
         playerClass
       );
 
+      // Debug logging
+      if (findError) {
+        console.error('Find match error:', findError);
+      }
+      if (opponentQueueId) {
+        console.log('Found opponent:', opponentQueueId);
+      } else {
+        console.log('No opponent found yet, polling...', attempts);
+      }
+
+      if (!isMountedRef.current) {
+        if (pollingInterval) clearInterval(pollingInterval);
+        return;
+      }
+
       if (!findError && opponentQueueId) {
-        clearInterval(pollInterval);
+        if (pollingInterval) clearInterval(pollingInterval);
 
         // Mark both players as matched
         await supabase
@@ -129,16 +138,21 @@ export function MatchmakingLobby({ userId, onMatchFound: _onMatchFound, onCancel
           .or(`id.eq.${opponentQueueId},user_id.eq.${userId}`)
           .eq('status', 'waiting');
 
-        handleMatchFound(opponentQueueId);
+        if (isMountedRef.current) {
+          handleMatchFound(opponentQueueId);
+        }
       }
 
     }, 1000);
   };
 
   const handleMatchFound = async (opponentQueueId: string) => {
+    if (!isMountedRef.current) return;
+
     setStatus('found');
 
     try {
+      if (!isMountedRef.current) return;
       setStatus('connecting');
 
       // Get opponent's queue entry
@@ -166,22 +180,75 @@ export function MatchmakingLobby({ userId, onMatchFound: _onMatchFound, onCancel
       const isPlayer1 = userId < opponentId;
       const playerNumber: 1 | 2 = isPlayer1 ? 1 : 2;
 
-      // Create the game session
-      const sessionId = await createOnlineGameSession({
-        player1Id: isPlayer1 ? userId : opponentId,
-        player2Id: isPlayer1 ? opponentId : userId,
-        player1Class: isPlayer1 ? playerClass : opponentClass,
-        player2Class: isPlayer1 ? opponentClass : playerClass,
-        gameMode,
-      });
+      let sessionId: string | undefined;
 
-      console.log('Game session created:', sessionId, 'Player', playerNumber, 'vs', opponentUsername);
+      if (isPlayer1) {
+        // Player 1 creates the game session
+        sessionId = await createOnlineGameSession({
+          player1Id: userId,
+          player2Id: opponentId,
+          player1Class: playerClass,
+          player2Class: opponentClass,
+          gameMode,
+        });
+        console.log('Game session created by Player 1:', sessionId);
+      } else {
+        // Player 2 waits for Player 1 to create the session
+        // Poll for the session to be created with specific opponent
+        let foundSession = false;
+        let attempts = 0;
+        const maxAttempts = 20; // 10 seconds
+
+        while (!foundSession && attempts < maxAttempts) {
+          // Try to find a session where:
+          // - We are player2
+          // - Player 1 is our matched opponent
+          // - Session was created recently (last 30 seconds)
+          // - Status is 'playing'
+          const { data: sessions } = await supabase
+            .from('game_sessions')
+            .select('id, created_at')
+            .eq('player1_id', opponentId)
+            .eq('player2_id', userId)
+            .eq('status', 'playing')
+            .gte('created_at', new Date(Date.now() - 30000).toISOString())
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (sessions && sessions.length > 0) {
+            sessionId = sessions[0].id;
+            foundSession = true;
+            console.log('Game session found by Player 2:', sessionId, 'created at', sessions[0].created_at);
+          } else {
+            // Wait a bit and try again
+            await new Promise(resolve => setTimeout(resolve, 500));
+            attempts++;
+          }
+        }
+
+        if (!foundSession) {
+          throw new Error('Failed to find game session created by opponent. Please try matchmaking again.');
+        }
+      }
+
+      if (!sessionId) {
+        throw new Error('Failed to establish game session');
+      }
+
+      console.log('Player', playerNumber, 'joining session', sessionId, 'vs', opponentUsername);
+
+      // Check if component is still mounted before navigating
+      if (!isMountedRef.current) {
+        console.log('Component unmounted, cancelling navigation');
+        return;
+      }
 
       // Navigate to online game
       _onMatchFound(sessionId, playerNumber, opponentUsername, playerClass);
 
     } catch (err: any) {
       console.error('Match found error:', err);
+      if (!isMountedRef.current) return;
       setError(err.message || 'Failed to connect to match');
       setStatus('idle');
       await leaveQueue();

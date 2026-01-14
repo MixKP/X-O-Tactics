@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getRealtimeManager } from '../../lib/realtime-manager';
-import { getGameSession, updateGameState, saveMove, completeGame } from '../../services/game-session-service';
-import { createInitialState } from '../../core/game-engine';
+import { getGameSession, updateGameState, saveMove, completeGame, deserializeEffects } from '../../services/game-session-service';
+import { createInitialState, makeMove } from '../../core/game-engine';
 import { OnlineGameStatus, ReconnectionOverlay, OnlineGameOver } from './index';
+import { supabase } from '../../lib/supabase';
 import type { OnlineGameSession } from '../../services/game-session-service';
-import type { PlayerClass, Move } from '../../types';
+import type { PlayerClass, GameState } from '../../types';
 import type { GameEndResult } from '../../lib/realtime-manager';
 
 interface OnlineGameProps {
@@ -55,6 +56,64 @@ export function OnlineGame({
     loadSession();
   }, [sessionId]);
 
+  // Handle game completion and ELO update
+  useEffect(() => {
+    const handleGameCompletion = async () => {
+      // Only process if game just ended (status is not 'playing')
+      // and it hasn't been completed yet (gameResult is null)
+      if (gameState.status !== 'playing' && !gameResult) {
+        console.log('Game ended:', gameState.status, 'Winner:', gameState.winner);
+
+        const isDraw = gameState.status === 'draw';
+        const winner = gameState.winner || null;
+
+        try {
+          // Only Player 1 should complete the game to avoid duplicate database entries
+          // This is deterministic - Player 1 always handles the ELO update
+          if (playerNumber === 1) {
+            console.log('Player 1: Completing game and updating ELO...');
+            await completeGame(sessionId, winner, isDraw, false);
+
+            // Get the actual rating changes from the match record
+            const { data: matchData } = await supabase
+              .from('matches')
+              .select('player1_rating_change, player2_rating_change')
+              .eq('game_mode', gameMode)
+              .eq('player1_id', session?.player1_id || '')
+              .eq('player2_id', session?.player2_id || '')
+              .order('played_at', { ascending: false })
+              .limit(1)
+              .single();
+
+            if (matchData) {
+              // Determine which rating change applies to this player
+              const isPlayer1 = playerNumber === 1;
+              const playerChange = isPlayer1 ? matchData.player1_rating_change : matchData.player2_rating_change;
+              const opponentChange = isPlayer1 ? matchData.player2_rating_change : matchData.player1_rating_change;
+
+              setPlayerRatingChange(playerChange);
+              setOpponentRatingChange(opponentChange);
+
+              console.log('Rating changes:', { playerChange, opponentChange });
+            }
+          }
+
+          // Set game result for UI
+          setGameResult({
+            winner,
+            isDraw,
+            reason: isDraw ? 'draw' : 'won',
+          });
+
+        } catch (error) {
+          console.error('Failed to complete game:', error);
+        }
+      }
+    };
+
+    handleGameCompletion();
+  }, [gameState.status, gameState.winner]);
+
   const loadSession = async () => {
     try {
       const sessionData = await getGameSession(sessionId);
@@ -66,14 +125,26 @@ export function OnlineGame({
 
       setSession(sessionData);
 
-      // Convert session data to game state
-      const loadedState = createInitialState();
-      loadedState.board = sessionData.board as any;
-      loadedState.currentPlayer = sessionData.current_player as any;
-      loadedState.players = sessionData.players as any;
-      loadedState.status = sessionData.status as any;
-      loadedState.winner = sessionData.winner as any;
-      loadedState.moveHistory = sessionData.move_history as any;
+      // Deserialize effects (convert frozenCells object to Map, shieldedMarks array to Set)
+      const deserializedEffects = deserializeEffects(sessionData.effects as any);
+
+      // Create new game state from session data
+      const loadedState: GameState = {
+        board: sessionData.board as any,
+        currentPlayer: sessionData.current_player as any,
+        players: sessionData.players as any,
+        status: sessionData.status as any,
+        winner: sessionData.winner as any,
+        moveHistory: sessionData.move_history as any,
+        effects: {
+          frozenCells: new Map(Object.entries(deserializedEffects.frozenCells)),
+          shieldedMarks: deserializedEffects.shieldedMarks,
+        },
+        playerClasses: {
+          X: sessionData.player1_class,
+          O: sessionData.player2_class,
+        },
+      };
 
       setGameState(loadedState);
 
@@ -112,9 +183,20 @@ export function OnlineGame({
     }
   };
 
-  const handleOpponentMove = (move: any, newGameState: any) => {
+  const handleOpponentMove = (move: any, receivedState: any) => {
     console.log('Opponent made move:', move);
-    setGameState(newGameState);
+
+    // Deserialize effects from JSON (convert objects to Map/Set)
+    const deserializedEffects = deserializeEffects(receivedState.effects as any);
+    const properState: GameState = {
+      ...receivedState,
+      effects: {
+        frozenCells: new Map(Object.entries(deserializedEffects.frozenCells)),
+        shieldedMarks: deserializedEffects.shieldedMarks,
+      },
+    };
+
+    setGameState(properState);
   };
 
   const handlePlayerConnectionChange = (playerNum: 1 | 2, connected: boolean) => {
@@ -207,45 +289,25 @@ export function OnlineGame({
     try {
       const realtimeManager = getRealtimeManager();
 
-      // Create move object
-      const move: Move = {
-        type: 'place',
-        cell: cellIndex as any,
-        player: playerSymbol,
-        timestamp: Date.now(),
-      };
+      // Use game engine to make the move (handles turn switching, win detection, MP, etc.)
+      const newGameState = makeMove(gameState, cellIndex as any);
 
-      // Optimistically update local state
-      const newBoard = [...gameState.board];
-      newBoard[cellIndex] = playerSymbol;
+      // Get the move from the updated history
+      const lastMove = newGameState.moveHistory[newGameState.moveHistory.length - 1];
 
-      const newPlayers = {
-        ...gameState.players,
-        [playerSymbol]: {
-          ...gameState.players[playerSymbol],
-          mp: Math.min(5, gameState.players[playerSymbol].mp + 1),
-        },
-      };
-
-      const newGameState = {
-        ...gameState,
-        board: newBoard,
-        players: newPlayers,
-      };
-
+      // Update local state
       setGameState(newGameState);
 
       // Send move to opponent
-      await realtimeManager.sendMove(move, newGameState);
+      await realtimeManager.sendMove(lastMove, newGameState);
 
       // Update database
-      await updateGameState(sessionId, newGameState, move);
-      await saveMove(sessionId, userId, playerSymbol, gameState.moveHistory.length + 1, move);
+      await updateGameState(sessionId, newGameState, lastMove);
+      await saveMove(sessionId, userId, playerSymbol, newGameState.moveHistory.length, lastMove);
 
     } catch (error) {
       console.error('Failed to make move:', error);
-      // Rollback optimistic update
-      setGameState(gameState);
+      // Error is thrown by game engine for invalid moves
     }
   }, [gameState, isPlayerTurn, playerSymbol, sessionId, userId]);
 

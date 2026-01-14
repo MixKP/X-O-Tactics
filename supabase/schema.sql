@@ -377,6 +377,15 @@ FOR SELECT USING (
   )
 );
 
+CREATE POLICY "Players can insert moves in their sessions" ON public.game_moves
+FOR INSERT WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.game_sessions
+    WHERE id = game_moves.game_session_id
+    AND (player1_id = auth.uid() OR player2_id = auth.uid())
+  )
+);
+
 -- Function to auto-abandon inactive sessions (call via cron or manually)
 CREATE OR REPLACE FUNCTION public.abandon_inactive_sessions()
 RETURNS VOID AS $$
@@ -438,8 +447,20 @@ BEGIN
     v_session.game_mode,
     v_session.player1_id,
     v_session.player2_id,
-    CASE WHEN p_is_draw THEN NULL ELSE v_session.player1_id END,
-    CASE WHEN p_is_draw THEN NULL ELSE v_session.player2_id END,
+    CASE WHEN p_is_draw THEN NULL ELSE
+      CASE
+        WHEN p_winner = 'X' THEN (CASE WHEN v_session.player1_symbol = 'X' THEN v_session.player1_id ELSE v_session.player2_id END)
+        WHEN p_winner = 'O' THEN (CASE WHEN v_session.player1_symbol = 'O' THEN v_session.player1_id ELSE v_session.player2_id END)
+        ELSE NULL
+      END
+    END,
+    CASE WHEN p_is_draw THEN NULL ELSE
+      CASE
+        WHEN p_winner = 'X' THEN (CASE WHEN v_session.player1_symbol = 'X' THEN v_session.player2_id ELSE v_session.player1_id END)
+        WHEN p_winner = 'O' THEN (CASE WHEN v_session.player1_symbol = 'O' THEN v_session.player2_id ELSE v_session.player1_id END)
+        ELSE NULL
+      END
+    END,
     p_is_draw,
     v_player1_rating,
     v_player2_rating,
