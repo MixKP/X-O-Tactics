@@ -22,9 +22,6 @@ export function MatchmakingLobby({ userId, onMatchFound: _onMatchFound, onCancel
   const [estimatedPlayers, setEstimatedPlayers] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  // Store our queue entry timestamp when we join
-  const [myQueueEntryTime, setMyQueueEntryTime] = useState<Date | null>(null);
-
   useEffect(() => {
     loadEloRating();
   }, [userId, gameMode]);
@@ -62,7 +59,7 @@ export function MatchmakingLobby({ userId, onMatchFound: _onMatchFound, onCancel
 
     try {
       // Join the queue
-      const { data: queueData, error: joinError } = await matchmakingHelpers.joinQueue(
+      const { error: joinError } = await matchmakingHelpers.joinQueue(
         userId,
         gameMode,
         playerClass,
@@ -71,32 +68,18 @@ export function MatchmakingLobby({ userId, onMatchFound: _onMatchFound, onCancel
 
       if (joinError) throw joinError;
 
-      // Store our queue entry timestamp for later
-      if (queueData?.created_at) {
-        setMyQueueEntryTime(new Date(queueData.created_at));
-      }
-
       // Subscribe to queue updates for real-time matchmaking
       matchmakingHelpers.subscribeToQueue(async (payload) => {
-        // If someone else got matched and we're still searching, check if it's with us
+        // If someone else got matched and we're still searching
         if (
           payload.eventType === 'UPDATE' &&
           payload.new.status === 'matched' &&
           payload.new.user_id !== userId &&
           status === 'searching'
         ) {
-          // Check if we're also marked as matched (meaning we found each other)
-          const { data: myQueueEntry } = await supabase
-            .from('matchmaking_queue')
-            .select('status')
-            .eq('user_id', userId)
-            .eq('game_mode', gameMode)
-            .single();
-
-          if (myQueueEntry?.status === 'matched') {
-            // We found each other! Use the opponent's queue entry ID
-            handleMatchFound(payload.new.id);
-          }
+          // Assume we're the match - our opponent found us!
+          // Use the opponent's queue entry ID
+          handleMatchFound(payload.new.id);
         }
       });
 
@@ -106,7 +89,6 @@ export function MatchmakingLobby({ userId, onMatchFound: _onMatchFound, onCancel
     } catch (err: any) {
       setError(err.message || 'Failed to join matchmaking queue');
       setStatus('idle');
-      setMyQueueEntryTime(null);
     }
   };
 
@@ -170,10 +152,6 @@ export function MatchmakingLobby({ userId, onMatchFound: _onMatchFound, onCancel
         throw new Error('Failed to get opponent queue information');
       }
 
-      if (!myQueueEntryTime) {
-        throw new Error('Queue entry timestamp not found');
-      }
-
       const opponentId = opponentQueue.user_id;
       const opponentUsername = (await supabase
         .from('profiles')
@@ -183,8 +161,9 @@ export function MatchmakingLobby({ userId, onMatchFound: _onMatchFound, onCancel
 
       const opponentClass = opponentQueue.player_class;
 
-      // Determine player numbers (first in queue = Player 1/X)
-      const isPlayer1 = myQueueEntryTime < new Date(opponentQueue.created_at);
+      // Determine player numbers deterministically using user IDs
+      // This avoids needing to fetch our own queue entry (which causes RLS issues)
+      const isPlayer1 = userId < opponentId;
       const playerNumber: 1 | 2 = isPlayer1 ? 1 : 2;
 
       // Create the game session
@@ -205,7 +184,6 @@ export function MatchmakingLobby({ userId, onMatchFound: _onMatchFound, onCancel
       console.error('Match found error:', err);
       setError(err.message || 'Failed to connect to match');
       setStatus('idle');
-      setMyQueueEntryTime(null);
       await leaveQueue();
     }
   };
@@ -216,7 +194,6 @@ export function MatchmakingLobby({ userId, onMatchFound: _onMatchFound, onCancel
     }
     setStatus('idle');
     setSearchTime(0);
-    setMyQueueEntryTime(null);
   };
 
   const handleStartSearch = () => {
