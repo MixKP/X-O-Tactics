@@ -70,9 +70,25 @@ export function MatchmakingLobby({ userId, onMatchFound: _onMatchFound, onCancel
 
       // Subscribe to queue updates for real-time matchmaking
       matchmakingHelpers.subscribeToQueue(async (payload) => {
-        if (payload.new.status === 'matched' && payload.new.user_id !== userId) {
-          // Found a match!
-          handleMatchFound(payload.new.id);
+        // If someone else got matched and we're still searching, check if it's with us
+        if (
+          payload.eventType === 'UPDATE' &&
+          payload.new.status === 'matched' &&
+          payload.new.user_id !== userId &&
+          status === 'searching'
+        ) {
+          // Check if we're also marked as matched (meaning we found each other)
+          const { data: myQueueEntry } = await supabase
+            .from('matchmaking_queue')
+            .select('status')
+            .eq('user_id', userId)
+            .eq('game_mode', gameMode)
+            .single();
+
+          if (myQueueEntry?.status === 'matched') {
+            // We found each other! Use the opponent's queue entry ID
+            handleMatchFound(payload.new.id);
+          }
         }
       });
 
@@ -106,65 +122,68 @@ export function MatchmakingLobby({ userId, onMatchFound: _onMatchFound, onCancel
       }
 
       // Try to find a match
-      const { data: matchId, error: findError } = await matchmakingHelpers.findMatch(
+      const { data: opponentQueueId, error: findError } = await matchmakingHelpers.findMatch(
         userId,
         gameMode,
         playerClass
       );
 
-      if (!findError && matchId) {
+      if (!findError && opponentQueueId) {
         clearInterval(pollInterval);
-        handleMatchFound(matchId);
+
+        // Mark both players as matched
+        await supabase
+          .from('matchmaking_queue')
+          .update({ status: 'matched' })
+          .or(`id.eq.${opponentQueueId},user_id.eq.${userId}`)
+          .eq('status', 'waiting');
+
+        handleMatchFound(opponentQueueId);
       }
 
     }, 1000);
   };
 
-  const handleMatchFound = async (matchQueueId: string) => {
+  const handleMatchFound = async (opponentQueueId: string) => {
     setStatus('found');
 
     try {
       setStatus('connecting');
 
-      // Get the match queue entry to find opponent info
-      const { data: queueEntry, error: queueError } = await supabase
-        .from('matchmaking_queue')
-        .select('*')
-        .eq('id', matchQueueId)
-        .single();
-
-      if (queueError || !queueEntry) {
-        throw new Error('Failed to get match information');
-      }
-
-      // Find opponent's queue entry to get their class
+      // Get opponent's queue entry
       const { data: opponentQueue, error: opponentError } = await supabase
         .from('matchmaking_queue')
-        .select('*, user_id')
-        .eq('game_mode', gameMode)
-        .eq('status', 'matched')
-        .neq('user_id', userId)
-        .limit(1)
+        .select('*')
+        .eq('id', opponentQueueId)
         .single();
 
       if (opponentError || !opponentQueue) {
-        throw new Error('Failed to find opponent information');
+        throw new Error('Failed to get opponent queue information');
+      }
+
+      // Get our own queue entry to determine player numbers
+      const { data: myQueue, error: myQueueError } = await supabase
+        .from('matchmaking_queue')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('game_mode', gameMode)
+        .single();
+
+      if (myQueueError || !myQueue) {
+        throw new Error('Failed to get your queue information');
       }
 
       const opponentId = opponentQueue.user_id;
-
-      // Fetch opponent's profile separately
-      const { data: opponentProfile } = await supabase
+      const opponentUsername = (await supabase
         .from('profiles')
         .select('username')
         .eq('id', opponentId)
-        .single();
+        .single())?.data?.username || 'Unknown';
 
-      const opponentUsername = opponentProfile?.username || 'Unknown';
       const opponentClass = opponentQueue.player_class;
 
       // Determine player numbers (first in queue = Player 1/X)
-      const isPlayer1 = new Date(queueEntry.created_at) < new Date(opponentQueue.created_at);
+      const isPlayer1 = new Date(myQueue.created_at) < new Date(opponentQueue.created_at);
       const playerNumber: 1 | 2 = isPlayer1 ? 1 : 2;
 
       // Create the game session

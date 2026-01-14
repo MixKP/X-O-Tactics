@@ -17,6 +17,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - New blockers or issues
 - Updated milestone status
 
+**Note**: The memory-bank contains planning documents from early development. The project is now fully implemented with all features complete. Refer to the actual codebase for current implementation.
+
 ## Project Overview
 
 **X/O Tactics** is a turn-based tactical battle game based on Tic-Tac-Toe with an MP system and class-based skills. The project includes local PvP, AI opponents (Easy/Medium/Hard), and competitive online multiplayer with ELO rankings.
@@ -103,7 +105,10 @@ npm run test:watch
 # Run a specific test file
 npm run test -- path/to/test.test.ts
 
-# Build for production
+# Run tests with coverage
+npm run test -- --coverage
+
+# Build for production (includes type checking)
 npm run build
 
 # Preview production build locally
@@ -115,6 +120,8 @@ npm run lint
 # Format code with Prettier
 npm run format
 ```
+
+**CI/CD**: The project uses GitHub Actions for continuous integration. See `.github/workflows/ci.yml`. Deployments to Vercel happen automatically on push to main. See `DEPLOYMENT.md` for details.
 
 ## Tech Stack
 
@@ -220,9 +227,14 @@ src/
 │   ├── MatchmakingPage.tsx  # Competitive matchmaking queue
 │   └── MatchPage.tsx        # Online gameplay with real-time sync
 │
+├── hooks/                   # Custom React hooks
+│   └── useGameState.ts      # Game state management hook
+│
 └── test/                    # Test configuration
     └── setup.ts             # Vitest + React Testing Library setup
 ```
+
+**Test files**: Co-located with source files (e.g., `game-engine.test.ts` next to `game-engine.ts`).
 
 ## Data Flow
 
@@ -309,6 +321,22 @@ Run `supabase/schema.sql` in your Supabase SQL Editor to set up:
 
 For detailed setup instructions, see `supabase/SETUP-GUIDE.md`
 
+## Deployment
+
+The project is configured for deployment to Vercel. See `DEPLOYMENT.md` for comprehensive deployment instructions.
+
+**Quick deploy**:
+```bash
+npm install -g vercel
+vercel
+```
+
+**Environment variables** (required for production):
+- `VITE_SUPABASE_URL` - Supabase project URL
+- `VITE_SUPABASE_ANON_KEY` - Supabase anonymous key
+
+**Automatic deployments**: Connected to GitHub, Vercel auto-deploys on push to main branch and creates preview deployments for PRs.
+
 ## Adding New Features
 
 ### Adding a New Skill
@@ -336,11 +364,14 @@ To adjust difficulty:
 3. Tune heuristic scoring in medium AI
 
 ### Testing
-Tests are located alongside source files (e.g., `core/game-engine.test.ts`).
+Tests are co-located alongside source files (e.g., `src/core/game-engine.test.ts`).
 
 Run all tests: `npm run test`
-Run specific test file: `npm run test -- core/game-engine.test.ts`
+Run specific test file: `npm run test -- path/to/test.test.ts`
 Run tests in watch mode: `npm run test:watch`
+Run tests with coverage: `npm run test -- --coverage`
+
+**CI/CD**: GitHub Actions automatically runs tests, linting, and type checking on all pushes and PRs.
 
 ## Common Issues
 
