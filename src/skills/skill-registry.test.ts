@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { getSkillsForClass, getSkillByName, getAllSkillNames } from './skill-registry';
-import type { PlayerClass } from '../types';
 
 describe('getSkillsForClass', () => {
   it('should return correct skills for disruptor class', () => {

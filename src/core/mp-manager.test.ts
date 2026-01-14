@@ -99,7 +99,6 @@ describe('hasEnoughMP', () => {
 
 describe('resetMP', () => {
   it('should reset MP to 0', () => {
-    const playerState = { mp: 5 };
     const newState = resetMP();
 
     expect(newState.mp).toBe(0);

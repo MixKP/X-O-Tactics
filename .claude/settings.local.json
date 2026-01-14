@@ -13,7 +13,9 @@
       "Bash(pkill:*)",
       "mcp__zread__get_repo_structure",
       "Bash(grep:*)",
-      "Bash(npm run test:*)"
+      "Bash(npm run test:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

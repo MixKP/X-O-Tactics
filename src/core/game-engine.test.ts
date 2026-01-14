@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { createInitialState, makeMove, isValidMove, getNextPlayer } from './game-engine';
-import type { GameState } from '../types';
 
 describe('createInitialState', () => {
   it('should create empty board with correct initial state', () => {
