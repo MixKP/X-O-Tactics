@@ -1,5 +1,6 @@
 import type { GameState, Player, CellIndex } from '../types';
 import { isCellShielded } from '../utils/effects';
+import { getWinningLines } from '../utils/board';
 
 /**
  * Balance Rules - CRITICAL
@@ -15,11 +16,7 @@ export function validateAntiLineBreak(
   targetCell: CellIndex,
   opponent: Player
 ): { valid: boolean; reason?: string } {
-  const lines = [
-    [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
-    [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
-    [0, 4, 8], [2, 4, 6], // diagonals
-  ];
+  const lines = getWinningLines();
 
   // Check if target cell is part of any line with 2 aligned opponent marks
   for (const line of lines) {
