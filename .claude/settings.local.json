@@ -18,7 +18,13 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(npm run lint:*)",
-      "Bash(timeout 10 npm run test:*)"
+      "Bash(timeout 10 npm run test:*)",
+      "Bash(vercel deploy:*)",
+      "Bash(vercel env add:*)",
+      "Bash(vercel env rm:*)",
+      "Bash(printf:*)",
+      "Bash(vercel env ls:*)",
+      "Bash(vercel env pull:*)"
     ]
   }
 }

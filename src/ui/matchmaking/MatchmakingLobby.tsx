@@ -140,7 +140,7 @@ export function MatchmakingLobby({ userId, onMatchFound: _onMatchFound, onCancel
       // Find opponent's queue entry to get their class
       const { data: opponentQueue, error: opponentError } = await supabase
         .from('matchmaking_queue')
-        .select('*, profiles!inner(username)')
+        .select('*, user_id')
         .eq('game_mode', gameMode)
         .eq('status', 'matched')
         .neq('user_id', userId)
@@ -152,7 +152,15 @@ export function MatchmakingLobby({ userId, onMatchFound: _onMatchFound, onCancel
       }
 
       const opponentId = opponentQueue.user_id;
-      const opponentUsername = opponentQueue.profiles.username;
+
+      // Fetch opponent's profile separately
+      const { data: opponentProfile } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', opponentId)
+        .single();
+
+      const opponentUsername = opponentProfile?.username || 'Unknown';
       const opponentClass = opponentQueue.player_class;
 
       // Determine player numbers (first in queue = Player 1/X)
