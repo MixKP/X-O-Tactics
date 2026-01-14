@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create vite@latest:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Bash(node:*)",
+      "Bash(curl:*)",
+      "Bash(wc:*)",
+      "Bash(echo:*)",
+      "Bash(ls:*)",
+      "Bash(pkill:*)"
+    ]
+  }
+}
